@@ -134,9 +134,10 @@ function nextQuestion() {
   const width = ui.field.clientWidth;
   const height = ui.field.clientHeight;
   const n = question.choices.length;
+  const isNarrow = width <= 520;
   // Horizontal lanes prevent words from overlapping. One word occupies each lane.
   const lanes = Array.from({length:n},(_,i)=>i).sort(()=>Math.random()-.5);
-  state.items = question.choices.map((word,i) => {
+  const prepared = question.choices.map((word,i) => {
     const button = document.createElement('button');
     button.type = 'button'; button.className = 'choice'; button.textContent = word.kirundi;
     button.addEventListener('click', () => choose(word, button));
@@ -145,12 +146,23 @@ function nextQuestion() {
     const laneWidth = width / n;
     let x = lanes[i] * laneWidth + (laneWidth - w) / 2;
     x = Math.max(4, Math.min(width - w - 4, x));
-    // All levels use the same gentle speed. Advanced levels shorten the
-    // journey by starting the words higher up rather than making them faster.
-    const y = height * level.startY + i * Math.min(10, height * .02);
-    button.style.left = `${x}px`;
-    button.style.transform = `translateY(${y}px)`;
-    return { word, button, y, height:h, speed:level.speed * (0.98 + Math.random() * .04) };
+    return { word, button, width: w, height: h, x };
+  });
+  const tallestChoice = prepared.reduce((max, item) => Math.max(max, item.height), 0);
+  const verticalGap = Math.max(tallestChoice + (isNarrow ? 18 : 12), isNarrow ? 68 : 56);
+  // All levels use the same gentle speed. Advanced levels shorten the
+  // journey by starting the words higher up rather than making them faster.
+  state.items = prepared.map((item, i) => {
+    const y = height * level.startY + i * verticalGap;
+    item.button.style.left = `${item.x}px`;
+    item.button.style.transform = `translateY(${y}px)`;
+    return {
+      word: item.word,
+      button: item.button,
+      y,
+      height: item.height,
+      speed: level.speed * (0.98 + Math.random() * .04)
+    };
   });
   cancelAnimationFrame(state.frame);
   state.frame = requestAnimationFrame(tick);
